@@ -1,3 +1,4 @@
+#include "gpio.h"
 #include <driverlib.h>
 
 void setupKeypad();
@@ -5,19 +6,29 @@ char readKeypad();
 int checkRows();
 char lastKey = 'X';
 
+// STATE
+    // 0    Locked
+    // 1    First correct digit entered
+    // 2    Second
+    // 3    Third
+    // 4    Unlocked
+int state = 0;
+
 int main(void) {
 
     volatile uint32_t i;
-    char pressed;
+    char key_val;
 
     // Stop watchdog timer
     WDT_A_hold(WDT_A_BASE);
 
-    // Set P1.0 to output direction
-    GPIO_setAsOutputPin(
-        GPIO_PORT_P1,
-        GPIO_PIN0
-        );
+    // Set P1.0 LED
+    P1DIR |= BIT0;
+    P1OUT &= ~BIT0;
+
+    // Set P6.6 LED
+    P6DIR |= BIT6;
+    P6OUT &= ~BIT6;
 
     // Setup Keypad
     setupKeypad();
@@ -29,14 +40,74 @@ int main(void) {
     
     while(1)
     {
-        pressed = readKeypad();
-        if (pressed=='1') {
-            // Toggle P1.0 output
-            
-            GPIO_toggleOutputOnPin(
-                GPIO_PORT_P1,
-                GPIO_PIN0
-                );
+
+        key_val = readKeypad();
+        if (key_val != 'X') {
+            if (state == 0) {
+                if (key_val=='1') {
+                    state = 1;
+                    P1OUT |= BIT0;
+                } else {
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                }
+
+            } else if (state == 1) {
+                if (key_val=='1') {
+                    state = 2;
+                } else {
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                }
+                
+            } else if (state == 2) {
+                if (key_val=='1') {
+                    state = 3;
+                } else {
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                }
+
+            } else if (state == 3) {
+                if (key_val=='1') {
+                    state = 4;
+                    P6OUT |= BIT6;
+                } else {
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                }
+
+            } else if (state == 4) {
+                if (key_val=='D') {             // lock
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                    P6OUT &= ~BIT6;
+                } else if (key_val=='A') {      // decrease base period by 0.25 s
+                    
+                } else if (key_val=='B') {      // increase base period by 0.25 s
+                    
+                } else if (key_val=='0') {      // pattern 0
+                    
+                } else if (key_val=='1') {      // pattern 0
+                    
+                } else if (key_val=='2') {      // pattern 2
+                    
+                } else if (key_val=='3') {      // pattern 0
+                    
+                } else if (key_val=='4') {      // pattern 0
+                    
+                } else if (key_val=='5') {      // pattern 0
+                    
+                } else if (key_val=='6') {      // pattern 0
+                    
+                } else if (key_val=='7') {      // pattern 0
+                    
+                }
+            } else {
+                state = 0;
+                P1OUT &= ~BIT0;
+                P6OUT &= ~BIT6;
+            }
         }
     }
 }
@@ -90,7 +161,6 @@ char readKeypad() {
 
     // check col 2
     P5OUT |= BIT3;
-    row = checkRows();
     row = checkRows();
     if (row!=-1) {
         pressed =  keys[row][1];
