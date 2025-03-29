@@ -1,10 +1,16 @@
 #include "gpio.h"
+#include "intrinsics.h"
+#include "msp430fr2355.h"
 #include <driverlib.h>
 
 void setupKeypad();
 char readKeypad();
 int checkRows();
 char lastKey = 'X';
+
+void setupADC();
+void readADC();
+unsigned int adc_result;
 
 // STATE
     // 0    Locked
@@ -30,13 +36,18 @@ int main(void) {
     P6DIR |= BIT6;
     P6OUT &= ~BIT6;
 
-    // Setup Keypad
+    // Setup Keypad on P1.4-3.1 (one rail of MSP breakout board)
     setupKeypad();
+
+    //
+    setupADC();
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
     PMM_unlockLPM5();
 
+    // enable interrupts
+    __enable_interrupt();
     
     while(1)
     {
@@ -78,6 +89,11 @@ int main(void) {
                 }
 
             } else if (state == 4) {
+                readADC();
+                if (adc_result > 0x7FF) {
+                    P6OUT ^= BIT6;
+                }
+
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
@@ -206,3 +222,36 @@ int checkRows() {
     }
 }
 //---------------------------------------------
+
+//---------------------------------------------ADC---------------------------------------------
+void setupADC() {
+    // Configure ADC A10 pin on P5.2
+    P5SEL0 |= BIT2;
+    P5SEL1 |= BIT2;
+
+    // Configure ADC12
+    ADCCTL0 |= ADCSHT_2 | ADCON;                             // ADCON, S&H=16 ADC clks
+    ADCCTL1 |= ADCSHP;                                       // ADCCLK = MODOSC; sampling timer
+    ADCCTL2 &= ~ADCRES;                                      // clear ADCRES in ADCCTL
+    ADCCTL2 |= ADCRES_2;                                     // 12-bit conversion results
+    ADCMCTL0 |= ADCINCH_10;                                   // A10 ADC input select; Vref=AVCC
+    ADCIE |= ADCIE0;                                         // Enable ADC conv complete interrupt
+}
+
+void readADC() {
+    // start sampling and conversion
+    ADCCTL0 |= ADCENC | ADCSC;
+}
+
+#pragma vector=ADC_VECTOR
+__interrupt void ADC_ISR(void)
+{
+    switch(ADCIV)
+    {
+        case ADCIV_ADCIFG:
+            adc_result = ADCMEM0;
+            break;
+        default:
+            break;
+    }
+}
