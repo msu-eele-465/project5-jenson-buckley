@@ -5,10 +5,10 @@
 #include <math.h>
 
 //-- KEYPAD
-void setupKeypad();     // init
-char readKeypad();      // checks for pressed keys on keypad
-int checkCols();        // ussed internally by readKeypad()
-char lastKey = 'X';     // used internally for debouncing
+void setupKeypad();                         // init
+char readKeypad();                          // checks for pressed keys on keypad
+int checkCols();                            // ussed internally by readKeypad()
+char lastKey = 'X';                         // used internally for debouncing
 
 //-- ADC SAMPLING AND AVERAGING
 void setupADC();                            // init
@@ -23,12 +23,17 @@ unsigned int adc_sensor_ave = 0;            // sensor average in ADC code
 void setupSampleClock();                    // setup clock on TB3 to sample ADC every 0.5s
 
 //-- ADC CODE TO C/F CONVERSION
-#define ADC_SCALER (3.3 / 4095.0)     // 3.3V / 2^12
-float adc2c(unsigned int code);     // convert ADC code to celcius
-float adc2f(unsigned int code);     // convert ADC code to fahrenheit
-int corf_toggle = 0;               // toggle temperature units between F (1) and C (0)
-float average = 0;                  // sensor average in units matching corf_toggle
+#define ADC_SCALER (3.3 / 4095.0)           // 3.3V / 2^12
+float adc2c(unsigned int code);             // convert ADC code to celcius
+float adc2f(unsigned int code);             // convert ADC code to fahrenheit
+int corf_toggle = 0;                        // toggle temperature units between F (1) and C (0)
+float average = 0;                          // sensor average in units matching corf_toggle
 
+//-- LCD
+char message[32] = {"LOCKED          T=##.#°X    N=3  "};   // 32 characters long; first 16 are the top row, rest are the bottom
+char status[16] = {"LOCKED          "}                      // 16 chars that can be written to whole top row (index [0,15])
+char temp[4] = {"00.0"};                                    // 4 characters that can written to bottom row (index [18,21])
+char window[3] = {"3  "};                                    // 3 characters that can written to bottom row (index [29,31])
 
 // STATE
     // 0    Locked
@@ -70,6 +75,8 @@ int main(void) {
     // enable interrupts
     __enable_interrupt();
     
+    // TODO: send default message (N=3 and locked)
+
     while(1)
     {
 
@@ -79,9 +86,11 @@ int main(void) {
                 if (key_val=='1') {
                     state = 1;
                     P1OUT |= BIT0;
+                    // TODO: send "UNLOCKING" to top row of LCD
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                 }
 
             } else if (state == 1) {
@@ -90,6 +99,7 @@ int main(void) {
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                 }
                 
             } else if (state == 2) {
@@ -98,21 +108,25 @@ int main(void) {
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                 }
 
             } else if (state == 3) {
                 if (key_val=='1') {
                     state = 4;
                     P6OUT |= BIT6;
+                    // TODO: send "UNLOCKED" to top row of LCD
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                 }
 
             } else if (state == 4) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                     P6OUT &= ~BIT6;
 
                 } else if (key_val=='A') {      // enter pattern
@@ -133,6 +147,7 @@ int main(void) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                     P6OUT &= ~BIT6;
                 } else if (key_val=='A') {      // decrease base period by 0.25 s
                     // TODO: I2C - send base period dec
@@ -162,6 +177,7 @@ int main(void) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
+                    // TODO: send "LOCKED" to top row of LCD
                     P6OUT &= ~BIT6;
                     
                 } else if ((key_val >= '0') & (key_val <= '9')) {
@@ -354,10 +370,6 @@ __interrupt void ISR_TB0_CCR0(void)
             average = adc2f(adc_sensor_ave);
             // TODO: send F average to bottom left of LCD
         }
-    }
-
-    if (average > 25.0) {
-        P6OUT ^= BIT6;
     }
 
     // read value
