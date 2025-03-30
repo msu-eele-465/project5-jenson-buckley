@@ -13,7 +13,7 @@ void readADC();                             // read value from ADC into adc_val
 int adc_val;                                // ADC buffer read into this value by ISR
 unsigned int adc_sensor_array[100];         // array to store values used to calculate average
 unsigned int adc_filled = 0;                // number of values used in average (when adc_filled == adc_buffer_length, average is accurate)
-int adc_buffer_length = 3;         // number of values to  be used in average
+int adc_buffer_length = 3;                  // number of values to  be used in average: can be [1,100]
 unsigned int temp_adc_buffer_length = 0;    // holds number of values to be used in average while user is entering the number
 unsigned int adc_tens = 0;                  // used to input multiple-digit number for window size
 unsigned int adc_sensor_ave = 0;            // sensor average in ADC code
@@ -158,7 +158,12 @@ int main(void) {
                     temp_adc_buffer_length = temp_adc_buffer_length*(10^adc_tens)+(key_val-'0');
                 
                 } else if (key_val=='*') {      // exit
-                    adc_buffer_length = temp_adc_buffer_length;             // update length of rolling average
+
+                    if ((temp_adc_buffer_length > 0) & (temp_adc_buffer_length < 101)) {                         // update length of rolling average
+                        adc_buffer_length = temp_adc_buffer_length;
+                    } else {
+                        adc_buffer_length = 3;
+                    }
                     memset(adc_sensor_array, 0, sizeof(adc_sensor_array));  // clear collected values used for average
                     adc_sensor_ave = 0;                                     // clear average
                     adc_filled = 0;                                         // reset counter for values used in average
