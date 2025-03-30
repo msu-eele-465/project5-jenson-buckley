@@ -3,20 +3,24 @@
 #include "msp430fr2355.h"
 #include <driverlib.h>
 
-void setupKeypad();
-char readKeypad();
-int checkRows();
-char lastKey = 'X';
+void setupKeypad();     // init
+char readKeypad();      // checks for pressed keys on keypad
+int checkCols();        // ussed internally by readKeypad()
+char lastKey = 'X';     // used internally for debouncing
 
-void setupADC();
-void readADC();
-unsigned int adc_val;
-unsigned int adc_sensor_array[100];
-unsigned int adc_filled = 0;
-unsigned int adc_buffer_length = 3;
-unsigned int adc_sensor_ave = 0;
+void setupADC();                            // init
+void readADC();                             // read value from ADC into adc_val
+int adc_val;                                // ADC buffer read into this value by ISR
+unsigned int adc_sensor_array[100];         // array to store values used to calculate average
+unsigned int adc_filled = 0;                // number of values used in average (when adc_filled == adc_buffer_length, average is accurate)
+int adc_buffer_length = 3;         // number of values to  be used in average
+unsigned int temp_adc_buffer_length = 0;    // holds number of values to be used in average while user is entering the number
+unsigned int adc_tens = 0;                  // used to input multiple-digit number for window size
+unsigned int adc_sensor_ave = 0;            // sensor average in ADC code
 
-void setupSampleClock();
+void setupSampleClock();        // setup clock on TB3 to sample ADC every 0.5s
+
+bool torf_toggle = 0;           // toggle temperature units between F (1) and C (0)
 
 // STATE
     // 0    Locked
@@ -24,6 +28,8 @@ void setupSampleClock();
     // 2    Second
     // 3    Third
     // 4    Unlocked
+    // 5    Pattern input
+    // 6    Windown input
 int state = 0;
 
 int main(void) {
@@ -96,35 +102,69 @@ int main(void) {
                 }
 
             } else if (state == 4) {
-                if (adc_val > 0x7FF) {
-                    P6OUT ^= BIT6;
+                if (key_val=='D') {             // lock
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                    P6OUT &= ~BIT6;
+
+                } else if (key_val=='A') {      // enter pattern
+                    state = 5;
+
+                } else if (key_val=='B') {      // enter window
+                    adc_tens = 0;
+                    temp_adc_buffer_length = 0;
+                    state = 6;
+
+                } else if (key_val=='C') {      // toggle degF/degC
+                    torf_toggle ^= 1;
                 }
 
+            } else if (state == 5) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
                     P6OUT &= ~BIT6;
                 } else if (key_val=='A') {      // decrease base period by 0.25 s
-                    
+                    // TODO: I2C - send base period dec
                 } else if (key_val=='B') {      // increase base period by 0.25 s
-                    
+                    // TODO: I2C - send base period inc
                 } else if (key_val=='0') {      // pattern 0
-                    
-                } else if (key_val=='1') {      // pattern 0
-                    
+                    // TODO: I2C - pattern 0
+                } else if (key_val=='1') {      // pattern 1
+                    // TODO: I2C - pattern 1
                 } else if (key_val=='2') {      // pattern 2
-                    
-                } else if (key_val=='3') {      // pattern 0
-                    
-                } else if (key_val=='4') {      // pattern 0
-                    
-                } else if (key_val=='5') {      // pattern 0
-                    
-                } else if (key_val=='6') {      // pattern 0
-                    
-                } else if (key_val=='7') {      // pattern 0
-                    
+                    // TODO: I2C - pattern 2
+                } else if (key_val=='3') {      // pattern 3
+                    // TODO: I2C - pattern 3
+                } else if (key_val=='4') {      // pattern 4
+                    // TODO: I2C - pattern 4
+                } else if (key_val=='5') {      // pattern 5
+                    // TODO: I2C - pattern 5
+                } else if (key_val=='6') {      // pattern 6
+                    // TODO: I2C - pattern 6
+                } else if (key_val=='7') {      // pattern 7
+                    // TODO: I2C - pattern 7
+                } else if (key_val=='*') {      // exit
+                    state = 4;
                 }
+
+            } else if (state == 6) {
+                if (key_val=='D') {             // lock
+                    state = 0;
+                    P1OUT &= ~BIT0;
+                    P6OUT &= ~BIT6;
+                    
+                } else if ((key_val >= '0') & (key_val <= '9')) {
+                    temp_adc_buffer_length = temp_adc_buffer_length*(10^adc_tens)+(key_val-'0');
+                
+                } else if (key_val=='*') {      // exit
+                    adc_buffer_length = temp_adc_buffer_length;             // update length of rolling average
+                    memset(adc_sensor_array, 0, sizeof(adc_sensor_array));  // clear collected values used for average
+                    adc_sensor_ave = 0;                                     // clear average
+                    adc_filled = 0;                                         // reset counter for values used in average
+                    state = 4;
+                }
+
             } else {
                 state = 0;
                 P1OUT &= ~BIT0;
@@ -173,35 +213,35 @@ char readKeypad() {
 
     char pressed = 'X';
 
-    // check col 1
+    // check row 1
     P1OUT |= BIT4;
-    int row = checkRows();
-    if (row!=-1) {
-        pressed = keys[row][0];
+    int col = checkCols();
+    if (col!=-1) {
+        pressed = keys[0][col];
     } 
     P1OUT &= ~BIT4;
 
-    // check col 2
+    // check row 2
     P5OUT |= BIT3;
-    row = checkRows();
-    if (row!=-1) {
-        pressed =  keys[row][1];
+    col = checkCols();
+    if (col!=-1) {
+        pressed =  keys[1][col];
     } 
     P5OUT &= ~BIT3;
 
-    // check col 3
+    // check row 3
     P5OUT |= BIT1;
-    row = checkRows();
-    if (row!=-1) {
-        pressed =  keys[row][2];
+    col = checkCols();
+    if (col!=-1) {
+        pressed =  keys[2][col];
     }
     P5OUT &= ~BIT1;
 
-    // check col 4
+    // check row 4
     P5OUT |= BIT0;
-    row = checkRows();
-    if (row!=-1) {
-        pressed =  keys[row][3];
+    col = checkCols();
+    if (col!=-1) {
+        pressed =  keys[3][col];
     }
     P5OUT &= ~BIT0;
 
@@ -213,7 +253,7 @@ char readKeypad() {
     }
 }
 
-int checkRows() {
+int checkCols() {
     // check inputs for rows on P5.4, P1.1, P3.5, 3.1 (rows 1-4)
     if (P5IN & BIT4) {
         return 0;
@@ -277,7 +317,7 @@ void setupSampleClock() {
 __interrupt void ISR_TB0_CCR0(void)
 {
     // update array       
-    unsigned int popped = adc_sensor_array[adc_buffer_length-1];
+    int popped = adc_sensor_array[adc_buffer_length-1];
     int i;
     for (i=adc_buffer_length-1; i>0; i--) {
         adc_sensor_array[i] = adc_sensor_array[i-1];
