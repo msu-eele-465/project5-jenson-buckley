@@ -10,7 +10,13 @@ char lastKey = 'X';
 
 void setupADC();
 void readADC();
-unsigned int adc_result;
+unsigned int adc_val;
+unsigned int adc_sensor_array[100];
+unsigned int adc_filled = 0;
+unsigned int adc_buffer_length = 3;
+unsigned int adc_sensor_ave = 0;
+
+void setupSampleClock();
 
 // STATE
     // 0    Locked
@@ -39,8 +45,9 @@ int main(void) {
     // Setup Keypad on P1.4-3.1 (one rail of MSP breakout board)
     setupKeypad();
 
-    //
+    // Setup ADC conversion
     setupADC();
+    setupSampleClock();
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -89,8 +96,7 @@ int main(void) {
                 }
 
             } else if (state == 4) {
-                readADC();
-                if (adc_result > 0x7FF) {
+                if (adc_val > 0x7FF) {
                     P6OUT ^= BIT6;
                 }
 
@@ -221,7 +227,6 @@ int checkRows() {
         return -1;
     }
 }
-//---------------------------------------------
 
 //---------------------------------------------ADC---------------------------------------------
 void setupADC() {
@@ -249,9 +254,47 @@ __interrupt void ADC_ISR(void)
     switch(ADCIV)
     {
         case ADCIV_ADCIFG:
-            adc_result = ADCMEM0;
+            adc_val = ADCMEM0;
             break;
         default:
             break;
     }
+}
+
+//---------------------------------------------Sample Clock---------------------------------------------
+void setupSampleClock() {
+    TB3CTL |= TBCLR;    // reset settings
+    TB3CTL |= TBSSEL__ACLK | MC__UP | ID__8;    // 32.768 kHz / 8 = 4096 / 2 - 1 = 2047
+    TB3CCR0 = 2047;                             // period of .5s
+    TB3CCTL0 |= CCIE;                           // Enable capture compare
+    TB3CCTL0 &= ~CCIFG;                         // Clear IFG
+
+    // start ADC read for first sample
+    readADC();                                  
+}
+
+#pragma vector = TIMER3_B0_VECTOR
+__interrupt void ISR_TB0_CCR0(void)
+{
+    // update array       
+    unsigned int popped = adc_sensor_array[adc_buffer_length-1];
+    int i;
+    for (i=adc_buffer_length-1; i>0; i--) {
+        adc_sensor_array[i] = adc_sensor_array[i-1];
+    }
+    adc_sensor_array[0] = adc_val;
+
+    // update average with cool move
+    adc_sensor_ave += (adc_val-popped)/adc_buffer_length;
+
+    // keep track of how many values have been read for average
+    if (adc_filled < adc_buffer_length) {
+        adc_filled++;
+    }
+
+    // read value
+    readADC();
+
+    // clear CCR0 IFG
+    TB3CCTL0 &= ~CCIFG;
 }
