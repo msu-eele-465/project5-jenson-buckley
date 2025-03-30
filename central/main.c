@@ -2,6 +2,7 @@
 #include "intrinsics.h"
 #include "msp430fr2355.h"
 #include <driverlib.h>
+#include <math.h>
 
 //-- KEYPAD
 void setupKeypad();     // init
@@ -371,7 +372,7 @@ float adc2c(unsigned int code) {
     // 12-bit adc conversion with 3.3V reference
     float voltage = ((float) code) * ADC_SCALER;
     // Vo to C conversion from LM19 datasheet
-    float celcius = -1481.96 + sqrt(2.1962e6 + (1.8639-voltage)/(3.88e-6));
+    float celcius = -1481.96 + sqrt(2.1962e6 + (1.8639 - voltage) / (3.88e-6));
     return celcius;
 }
 
