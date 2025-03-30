@@ -3,11 +3,13 @@
 #include "msp430fr2355.h"
 #include <driverlib.h>
 
+//-- KEYPAD
 void setupKeypad();     // init
 char readKeypad();      // checks for pressed keys on keypad
 int checkCols();        // ussed internally by readKeypad()
 char lastKey = 'X';     // used internally for debouncing
 
+//-- ADC SAMPLING AND AVERAGING
 void setupADC();                            // init
 void readADC();                             // read value from ADC into adc_val
 int adc_val;                                // ADC buffer read into this value by ISR
@@ -17,10 +19,15 @@ int adc_buffer_length = 3;                  // number of values to  be used in a
 unsigned int temp_adc_buffer_length = 0;    // holds number of values to be used in average while user is entering the number
 unsigned int adc_tens = 0;                  // used to input multiple-digit number for window size
 unsigned int adc_sensor_ave = 0;            // sensor average in ADC code
+void setupSampleClock();                    // setup clock on TB3 to sample ADC every 0.5s
 
-void setupSampleClock();        // setup clock on TB3 to sample ADC every 0.5s
+//-- ADC CODE TO C/F CONVERSION
+#define ADC_SCALER (3.3 / 4095.0)     // 3.3V / 2^12
+float adc2c(unsigned int code);     // convert ADC code to celcius
+float adc2f(unsigned int code);     // convert ADC code to fahrenheit
+int corf_toggle = 0;               // toggle temperature units between F (1) and C (0)
+float average = 0;                  // sensor average in units matching corf_toggle
 
-bool torf_toggle = 0;           // toggle temperature units between F (1) and C (0)
 
 // STATE
     // 0    Locked
@@ -108,15 +115,17 @@ int main(void) {
                     P6OUT &= ~BIT6;
 
                 } else if (key_val=='A') {      // enter pattern
+                    // TODO: send "set pattern" to top row of LCD screen
                     state = 5;
 
                 } else if (key_val=='B') {      // enter window
+                    // TODO: send "set window size" to top row of LCD screen
                     adc_tens = 0;
                     temp_adc_buffer_length = 0;
                     state = 6;
 
                 } else if (key_val=='C') {      // toggle degF/degC
-                    torf_toggle ^= 1;
+                    corf_toggle ^= 1;
                 }
 
             } else if (state == 5) {
@@ -155,7 +164,7 @@ int main(void) {
                     P6OUT &= ~BIT6;
                     
                 } else if ((key_val >= '0') & (key_val <= '9')) {
-                    temp_adc_buffer_length = temp_adc_buffer_length*(10^adc_tens)+(key_val-'0');
+                    temp_adc_buffer_length = temp_adc_buffer_length*pow(10, adc_tens)+(key_val-'0');
                 
                 } else if (key_val=='*') {      // exit
 
@@ -167,6 +176,7 @@ int main(void) {
                     memset(adc_sensor_array, 0, sizeof(adc_sensor_array));  // clear collected values used for average
                     adc_sensor_ave = 0;                                     // clear average
                     adc_filled = 0;                                         // reset counter for values used in average
+                    // TODO: send "N = {adc_buffer_length}" to the bottom right corner of the LCD (longest will be "N = 100")
                     state = 4;
                 }
 
@@ -335,6 +345,18 @@ __interrupt void ISR_TB0_CCR0(void)
     // keep track of how many values have been read for average
     if (adc_filled < adc_buffer_length) {
         adc_filled++;
+    } else {
+        if (corf_toggle == 0) {
+            average = adc2c(adc_sensor_ave);
+            // TODO: send C average to bottom left of LCD
+        } else {
+            average = adc2f(adc_sensor_ave);
+            // TODO: send F average to bottom left of LCD
+        }
+    }
+
+    if (average > 25.0) {
+        P6OUT ^= BIT6;
     }
 
     // read value
@@ -342,4 +364,18 @@ __interrupt void ISR_TB0_CCR0(void)
 
     // clear CCR0 IFG
     TB3CCTL0 &= ~CCIFG;
+}
+
+//---------------------------------------------ADC CONVERSIONS---------------------------------------------
+float adc2c(unsigned int code) {
+    // 12-bit adc conversion with 3.3V reference
+    float voltage = ((float) code) * ADC_SCALER;
+    // Vo to C conversion from LM19 datasheet
+    float celcius = -1481.96 + sqrt(2.1962e6 + (1.8639-voltage)/(3.88e-6));
+    return celcius;
+}
+
+float adc2f(unsigned int code) {
+    float fahrenheit = 1.8*adc2c(code)+32.0;
+    return fahrenheit;
 }
