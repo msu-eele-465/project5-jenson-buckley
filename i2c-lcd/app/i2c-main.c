@@ -20,7 +20,7 @@ void delay(unsigned int count) {
 // Enable Pulse
 void lcd_enable_pulse() {
     P3OUT |= LCD_E;
-    delay(2);
+    delay(1);
     P3OUT &= ~LCD_E;
 }
 
@@ -30,7 +30,7 @@ void lcd_write_command(unsigned char cmd) {
     P3OUT &= ~LCD_RW;  // RW = 0 for write
     LCD_DATA = cmd;    // Write command to data bus
     lcd_enable_pulse();
-    delay(5);         // Command execution delay
+    delay(1);         // Command execution delay
 }
 
 // Data Write Function
@@ -39,7 +39,7 @@ void lcd_write_data(unsigned char data) {
     P3OUT &= ~LCD_RW;  // RW = 0 for write
     LCD_DATA = data;   // Write data to data bus
     lcd_enable_pulse();
-    delay(5);         // Data write delay
+    delay(1);         // Data write delay
 }
 
 // LCD Initialization
@@ -55,6 +55,12 @@ void lcd_init() {
     lcd_write_command(0x06); // Entry mode set: Increment cursor
 }
 
+// Set LCD Cursor Position
+void lcd_set_cursor(unsigned char address) {
+    lcd_write_command(0x80 | address);
+    delay(1);
+}
+
 // Display String on LCD
 void lcd_display_string(char *str) {
     while(*str) {
@@ -65,7 +71,7 @@ void lcd_display_string(char *str) {
 // Clear LCD
 void lcd_clear(){
     lcd_write_command(0x01); // Clear display
-    delay(50);             // Delay for clear command
+    delay(1);             // Delay for clear command
 }
 
 void i2c_slave_setup() {
@@ -107,16 +113,28 @@ int main(void) {
     }
 }
 
-// I2C Interrupt Service Routine
 #pragma vector=EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void) {
     char c = UCB0RXBUF;
 
     if (c == '\n') {
-        // End of message, null-terminate and display
+        // End of message, null-terminate
         message_buffer[msg_index] = '\0';
+
         lcd_clear();
-        lcd_display_string((char *)message_buffer);
+
+        // Print first 16 characters on top row
+        lcd_set_cursor(0x00);
+        for (unsigned char i = 0; i < 16 && message_buffer[i] != '\0'; i++) {
+            lcd_write_data(message_buffer[i]);
+        }
+
+        // Print next 16 characters on bottom row
+        lcd_set_cursor(0x40);
+        for (unsigned char i = 16; i < 32 && message_buffer[i] != '\0'; i++) {
+            lcd_write_data(message_buffer[i]);
+        }
+
         msg_index = 0;  // Reset for next message
     } else {
         if (msg_index < MAX_MSG_LEN - 1) {
@@ -126,3 +144,4 @@ __interrupt void EUSCI_B0_I2C_ISR(void) {
         }
     }
 }
+

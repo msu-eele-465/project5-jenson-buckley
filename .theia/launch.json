@@ -11,21 +11,21 @@
             }
         },
         {
-<<<<<<< HEAD
             "name": "i2c-lcd",
             "type": "ccs-debug",
             "request": "launch",
             "projectInfo": {
                 "name": "i2c-lcd",
                 "resourceId": "/i2c-lcd"
-=======
+            }
+        },
+        {
             "name": "led_bar",
             "type": "ccs-debug",
             "request": "launch",
             "projectInfo": {
                 "name": "led_bar",
                 "resourceId": "/led_bar"
->>>>>>> 5d21ca1e1792585133a2229d36d5c2ffea3fa18f
             }
         }
     ]
