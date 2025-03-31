@@ -17,9 +17,11 @@ int adc_val;                                // ADC buffer read into this value b
 unsigned int adc_sensor_array[100];         // array to store values used to calculate average
 unsigned int adc_filled = 0;                // number of values used in average (when adc_filled == adc_buffer_length, average is accurate)
 int adc_buffer_length = 3;                  // number of values to  be used in average: can be [1,100]
+char adc_buffer_length_string[3];           // string for printing to lcd 
 unsigned int temp_adc_buffer_length = 0;    // holds number of values to be used in average while user is entering the number
 unsigned int adc_tens = 0;                  // used to input multiple-digit number for window size
-unsigned int adc_sensor_ave = 0;            // sensor average in ADC code
+volatile unsigned int adc_sensor_avg = 0;   // sensor average in ADC code
+volatile char adc_sensor_avg_string[4];     // String to print to lcd
 void setupSampleClock();                    // setup clock on TB3 to sample ADC every 0.5s
 
 //-- ADC CODE TO C/F CONVERSION
@@ -29,11 +31,13 @@ float adc2f(unsigned int code);             // convert ADC code to fahrenheit
 int corf_toggle = 0;                        // toggle temperature units between F (1) and C (0)
 float average = 0;                          // sensor average in units matching corf_toggle
 
+//-- I2C
+void i2c_master_setup();                    //init
+void i2c_send_int(unsigned char data);                        //sents a 1 byte integer over i2c
+void i2c_send_msg(const char *msg);                        //sends a 33 byte string over i2c
+
 //-- LCD
-char message[32] = {"LOCKED          T=##.#°X    N=3  "};   // 32 characters long; first 16 are the top row, rest are the bottom
-char status[16] = {"LOCKED          "}                      // 16 chars that can be written to whole top row (index [0,15])
-char temp[4] = {"00.0"};                                    // 4 characters that can written to bottom row (index [18,21])
-char window[3] = {"3  "};                                    // 3 characters that can written to bottom row (index [29,31])
+char message[33] = {"LOCKED          T=##.#°X    N=3  \n"};   // 33 characters long; first 16 are the top row, last is new line, rest are the bottom
 
 // STATE
     // 0    Locked
@@ -68,6 +72,12 @@ int main(void) {
     setupADC();
     setupSampleClock();
 
+    // Setup I2C
+    i2c_master_setup();
+
+    // Send default message "LOCKED          T=##.#°X    N=3  \n"
+    i2c_send_msg(message);
+
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
     PMM_unlockLPM5();
@@ -75,7 +85,6 @@ int main(void) {
     // enable interrupts
     __enable_interrupt();
     
-    // TODO: send default message (N=3 and locked)
 
     while(1)
     {
@@ -86,11 +95,15 @@ int main(void) {
                 if (key_val=='1') {
                     state = 1;
                     P1OUT |= BIT0;
-                    // TODO: send "UNLOCKING" to top row of LCD
+                    memcpy(&message[0], "UNLOCKED        ", 16);
+                    i2c_send_msg(message);
+
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
+
                 }
 
             } else if (state == 1) {
@@ -99,7 +112,8 @@ int main(void) {
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                 }
                 
             } else if (state == 2) {
@@ -108,33 +122,39 @@ int main(void) {
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                 }
 
             } else if (state == 3) {
                 if (key_val=='1') {
                     state = 4;
                     P6OUT |= BIT6;
-                    // TODO: send "UNLOCKED" to top row of LCD
+                    memcpy(&message[0], "UNLOCKED        ", 16);
+                    i2c_send_msg(message);
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                 }
 
             } else if (state == 4) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                     P6OUT &= ~BIT6;
 
                 } else if (key_val=='A') {      // enter pattern
-                    // TODO: send "set pattern" to top row of LCD screen
+                    memcpy(&message[0], "Set Pattern     ", 16);
+                    i2c_send_msg(message);
                     state = 5;
 
                 } else if (key_val=='B') {      // enter window
-                    // TODO: send "set window size" to top row of LCD screen
+                    memcpy(&message[0], "Set Window Size ", 16);
+                    i2c_send_msg(message);
                     adc_tens = 0;
                     temp_adc_buffer_length = 0;
                     state = 6;
@@ -147,28 +167,45 @@ int main(void) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                     P6OUT &= ~BIT6;
                 } else if (key_val=='A') {      // decrease base period by 0.25 s
                     // TODO: I2C - send base period dec
                 } else if (key_val=='B') {      // increase base period by 0.25 s
                     // TODO: I2C - send base period inc
                 } else if (key_val=='0') {      // pattern 0
-                    // TODO: I2C - pattern 0
+                    memcpy(&message[0], "Static          ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(0);
                 } else if (key_val=='1') {      // pattern 1
-                    // TODO: I2C - pattern 1
+                    memcpy(&message[0], "Toggle          ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(1);
                 } else if (key_val=='2') {      // pattern 2
-                    // TODO: I2C - pattern 2
+                    memcpy(&message[0], "Up Counter      ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(2);
                 } else if (key_val=='3') {      // pattern 3
-                    // TODO: I2C - pattern 3
+                    memcpy(&message[0], "In and Out      ", 16);
+                    i2c_send_msg(message); 
+                    i2c_send_int(3);
                 } else if (key_val=='4') {      // pattern 4
-                    // TODO: I2C - pattern 4
+                    memcpy(&message[0], "Down Counter    ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(4);
                 } else if (key_val=='5') {      // pattern 5
-                    // TODO: I2C - pattern 5
+                    memcpy(&message[0], "Rotate One Left ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(5);
                 } else if (key_val=='6') {      // pattern 6
-                    // TODO: I2C - pattern 6
+                    memcpy(&message[0], "Fill to the Left", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(6);
                 } else if (key_val=='7') {      // pattern 7
-                    // TODO: I2C - pattern 7
+                    memcpy(&message[0], "Static          ", 16);
+                    i2c_send_msg(message);
+                    i2c_send_int(7);
                 } else if (key_val=='*') {      // exit
                     state = 4;
                 }
@@ -177,7 +214,8 @@ int main(void) {
                 if (key_val=='D') {             // lock
                     state = 0;
                     P1OUT &= ~BIT0;
-                    // TODO: send "LOCKED" to top row of LCD
+                    memcpy(&message[0], "LOCKED          ", 16);
+                    i2c_send_msg(message);
                     P6OUT &= ~BIT6;
                     
                 } else if ((key_val >= '0') & (key_val <= '9')) {
@@ -191,9 +229,11 @@ int main(void) {
                         adc_buffer_length = 3;
                     }
                     memset(adc_sensor_array, 0, sizeof(adc_sensor_array));  // clear collected values used for average
-                    adc_sensor_ave = 0;                                     // clear average
+                    adc_sensor_avg = 0;                                     // clear average
                     adc_filled = 0;                                         // reset counter for values used in average
-                    // TODO: send "N = {adc_buffer_length}" to the bottom right corner of the LCD (longest will be "N = 100")
+                    sprintf(adc_buffer_length_string, "%03d", adc_buffer_length);           // Prints zero-padded to 3 digits, e.g., "007"
+                    memcpy(&message[28], adc_buffer_length_string, 3);
+                    i2c_send_msg(message);
                     state = 4;
                 }
 
@@ -333,6 +373,63 @@ __interrupt void ADC_ISR(void)
     }
 }
 
+//--------------------------------------------------I2C------------------------------------------------
+// Master Setup
+void i2c_master_setup(){
+    UCB0CTLW0 |= UCSWRST;   // Hold USCI in reset
+
+    //-- Setup I2C Pins
+    P1SEL1 &= ~(BIT2 | BIT3);   
+    P1SEL0 |=  (BIT2 | BIT3);             
+
+    //-- Configure I2C
+    UCB0CTLW0 = UCSWRST | UCSSEL_3 | UCMODE_3 | UCMST | UCTR | UCSYNC; // SMCLK, I2C master, Tx mode
+    UCB0BRW = 10;                   // SCL = SMCLK / 10 = 100kHz
+
+    UCB0CTLW1 = UCASTP_2;           // Auto STOP after TBCNT bytes
+
+    PM5CTL0 &= ~LOCKLPM5;           // Enable GPIOs
+
+    UCB0CTLW0 &= ~UCSWRST;          // Release from reset
+
+    __delay_cycles(10000);          // Setup settle delay
+}
+
+// Integer send function (for led bar)
+void i2c_send_int(unsigned char data) {
+    while (UCB0CTLW0 & UCTXSTP);          // Wait for STOP if needed
+    UCB0I2CSA = 0x45;                     // Slave address
+
+    UCB0TBCNT = 1;                        // Transmit 1 byte
+    UCB0CTLW0 |= UCTXSTT;                // Generate START
+
+    while (!(UCB0IFG & UCTXIFG0));       // Wait for TX buffer ready
+    UCB0TXBUF = data;                    // Send data
+
+    while (UCB0CTLW0 & UCTXSTP);         // Wait for STOP to finish
+}
+
+// Messqage send function (for lcd)
+void i2c_send_msg(const char *msg) {
+    while (UCB0CTLW0 & UCTXSTP);  // Wait for previous STOP
+
+    UCB0I2CSA = 0x40;             // Set slave address
+
+    int len = 0;
+    while (msg[len] != '\0') len++;  // Count characters
+
+    UCB0TBCNT = len;              // Set transmit byte count
+    UCB0CTLW0 |= UCTXSTT;         // Generate START
+
+    int i;
+    for (i = 0; i < len; i++) {
+        while (!(UCB0IFG & UCTXIFG0));  // Wait for TXBUF ready
+        UCB0TXBUF = msg[i];            // Send character
+    }
+
+    while (UCB0CTLW0 & UCTXSTP);  // Wait for STOP to complete
+}
+
 //---------------------------------------------Sample Clock---------------------------------------------
 void setupSampleClock() {
     TB3CTL |= TBCLR;    // reset settings
@@ -357,18 +454,22 @@ __interrupt void ISR_TB0_CCR0(void)
     adc_sensor_array[0] = adc_val;
 
     // update average with cool move
-    adc_sensor_ave += (adc_val-popped)/adc_buffer_length;
+    adc_sensor_avg += (adc_val-popped)/adc_buffer_length;
 
     // keep track of how many values have been read for average
     if (adc_filled < adc_buffer_length) {
         adc_filled++;
     } else {
         if (corf_toggle == 0) {
-            average = adc2c(adc_sensor_ave);
-            // TODO: send C average to bottom left of LCD
+            average = adc2c(adc_sensor_avg);
+            sprintf(adc_sensor_avg_string, "%2d.%1d", adc_sensor_avg / 10, adc_sensor_avg % 10); //Adds decimal and prints to string
+            memcpy(&message[18], adc_sensor_avg_string, 4);
+            i2c_send_msg(message);
         } else {
-            average = adc2f(adc_sensor_ave);
-            // TODO: send F average to bottom left of LCD
+            average = adc2f(adc_sensor_avg);
+            sprintf(adc_sensor_avg_string, "%2d.%1d", adc_sensor_avg / 10, adc_sensor_avg % 10); //Adds decimal and prints to string
+            memcpy(&message[18], adc_sensor_avg_string, 4);
+            i2c_send_msg(message);
         }
     }
 
