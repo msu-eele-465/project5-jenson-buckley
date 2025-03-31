@@ -9,6 +9,15 @@
                 "name": "central",
                 "resourceId": "/central"
             }
+        },
+        {
+            "name": "led_bar",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "led_bar",
+                "resourceId": "/led_bar"
+            }
         }
     ]
 }
