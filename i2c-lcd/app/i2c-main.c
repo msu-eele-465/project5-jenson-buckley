@@ -5,7 +5,7 @@
 #define LCD_RW BIT1     // Read/Write
 #define LCD_E  BIT2     // Enable
 #define LCD_DATA P2OUT  // Data bus on Port 1
-#define MAX_MSG_LEN 32
+#define MAX_MSG_LEN 33
 
 volatile char message_buffer[MAX_MSG_LEN];
 volatile unsigned char msg_index = 0;
@@ -125,13 +125,14 @@ __interrupt void EUSCI_B0_I2C_ISR(void) {
 
         // Print first 16 characters on top row
         lcd_set_cursor(0x00);
-        for (unsigned char i = 0; i < 16 && message_buffer[i] != '\0'; i++) {
+        unsigned char i;
+        for (i = 0; i < 16 && message_buffer[i] != '\0'; i++) {
             lcd_write_data(message_buffer[i]);
         }
 
         // Print next 16 characters on bottom row
         lcd_set_cursor(0x40);
-        for (unsigned char i = 16; i < 32 && message_buffer[i] != '\0'; i++) {
+        for (i = 16; i < 32 && message_buffer[i] != '\0'; i++) {
             lcd_write_data(message_buffer[i]);
         }
 
