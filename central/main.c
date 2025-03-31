@@ -392,3 +392,4 @@ float adc2f(unsigned int code) {
     float fahrenheit = 1.8*adc2c(code)+32.0;
     return fahrenheit;
 }
+
