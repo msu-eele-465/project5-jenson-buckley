@@ -268,27 +268,52 @@ int main(void) {
 // --------------------------------------------- KEYPAD ---------------------------------------------
 void setupKeypad() {
     // columns as outputs on P1.4, P5.3, P5.1, P5.0 initialized to 0
+    //P1DIR |= BIT4;
+    //P5DIR |= BIT3;
+    //P5DIR |= BIT1;
+    //P5DIR |= BIT0;
+    //P1OUT &= ~BIT4;      
+    //P5OUT &= ~BIT3;
+    //P5OUT &= ~BIT1;
+    //P5OUT &= ~BIT0;
+    
+    // columns as outputs on P1.4, P1.5, P1.6, P1.7 initialized to 0
     P1DIR |= BIT4;
-    P5DIR |= BIT3;
-    P5DIR |= BIT1;
-    P5DIR |= BIT0;
-    P1OUT &= ~BIT4;      
-    P5OUT &= ~BIT3;
-    P5OUT &= ~BIT1;
-    P5OUT &= ~BIT0;
+    P1DIR |= BIT5;
+    P1DIR |= BIT6;
+    P1DIR |= BIT7;
+    P1OUT &= ~BIT4;
+    P1OUT &= ~BIT5;  
+    P1OUT &= ~BIT6;  
+    P1OUT &= ~BIT7;        
+   
     // rows as inputs pulled down internally on P5.4, P1.1, P3.5, 3.1
-    P5DIR &= ~BIT4;     // inputs
-    P1DIR &= ~BIT1;
-    P3DIR &= ~BIT5;
-    P3DIR &= ~BIT1;
-    P5REN |= BIT4;      // internal resistors
-    P1REN |= BIT1;
-    P3REN |= BIT5;
-    P3REN |= BIT1;
-	P5OUT &=~ BIT4;     // pull-downs
-	P1OUT &=~ BIT1;
-	P3OUT &=~ BIT5;
-	P3OUT &=~ BIT1;
+    //P5DIR &= ~BIT4;     // inputs
+    //P1DIR &= ~BIT1;
+    //P3DIR &= ~BIT5;
+    //P3DIR &= ~BIT1;
+    //P5REN |= BIT4;      // internal resistors
+    //P1REN |= BIT1;
+    //P3REN |= BIT5;
+    //P3REN |= BIT1;
+	//P5OUT &=~ BIT4;     // pull-downs
+	//P1OUT &=~ BIT1;
+	//P3OUT &=~ BIT5;
+	//P3OUT &=~ BIT1;
+
+    // rows as inputs pulled down internally on P2.0, P2.1, P2.2, P2.3
+    P2DIR &= ~BIT0;     // inputs
+    P2DIR &= ~BIT1;
+    P2DIR &= ~BIT2;
+    P2DIR &= ~BIT3;
+    P2REN |= BIT0;      // internal resistors
+    P2REN |= BIT1;
+    P2REN |= BIT2;
+    P2REN |= BIT3;
+	P2OUT &=~ BIT0;     // pull-downs
+	P2OUT &=~ BIT1;
+	P2OUT &=~ BIT2;
+	P2OUT &=~ BIT3;
 }
 
 char readKeypad() {
@@ -313,28 +338,28 @@ char readKeypad() {
     P1OUT &= ~BIT4;
 
     // check row 2
-    P5OUT |= BIT3;
+    P1OUT |= BIT5;
     col = checkCols();
     if (col!=-1) {
         pressed =  keys[1][col];
     } 
-    P5OUT &= ~BIT3;
+    P1OUT &= ~BIT5;
 
     // check row 3
-    P5OUT |= BIT1;
+    P1OUT |= BIT6;
     col = checkCols();
     if (col!=-1) {
         pressed =  keys[2][col];
     }
-    P5OUT &= ~BIT1;
+    P1OUT &= ~BIT6;
 
     // check row 4
-    P5OUT |= BIT0;
+    P1OUT |= BIT7;
     col = checkCols();
     if (col!=-1) {
         pressed =  keys[3][col];
     }
-    P5OUT &= ~BIT0;
+    P1OUT &= ~BIT7;
 
     if (pressed != lastKey) {
         lastKey = pressed;
@@ -346,13 +371,13 @@ char readKeypad() {
 
 int checkCols() {
     // check inputs for rows on P5.4, P1.1, P3.5, 3.1 (rows 1-4)
-    if (P5IN & BIT4) {
+    if (P2IN & BIT0) {
         return 0;
-    } else if (P1IN & BIT1) {
+    } else if (P2IN & BIT1) {
         return 1;
-    } else if (P3IN & BIT5) {
+    } else if (P2IN & BIT2) {
         return 2;
-    } else if (P3IN & BIT1) {
+    } else if (P2IN & BIT3) {
         return 3;
     } else {
         return -1;
