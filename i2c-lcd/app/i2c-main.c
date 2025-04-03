@@ -93,7 +93,7 @@ void i2c_slave_setup() {
 
     UCB0CTLW0 &= ~UCSWRST;      // Exit reset
 
-    UCB0IE |= UCRXIE0;          // Enable receive interrupt
+    UCB0IE |= UCRXIE0 | UCSTPIE;  // Enable RX interrupt and STOP interrupt
 }
 
 // Main Program
@@ -117,32 +117,28 @@ int main(void) {
 __interrupt void EUSCI_B0_I2C_ISR(void) {
     char c = UCB0RXBUF;
 
-    if (c == '\n') {
-        // End of message, null-terminate
-        message_buffer[msg_index] = '\0';
+    if (msg_index < 32) {
+        message_buffer[msg_index++] = c;
+    }
 
+    if (msg_index == 32) {
+        // Received full message
         lcd_clear();
 
-        // Print first 16 characters on top row
+        // Top row
         lcd_set_cursor(0x00);
         unsigned char i;
-        for (i = 0; i < 16 && message_buffer[i] != '\0'; i++) {
+        for (i = 0; i < 16; i++) {
             lcd_write_data(message_buffer[i]);
         }
 
-        // Print next 16 characters on bottom row
+        // Bottom row
         lcd_set_cursor(0x40);
-        for (i = 16; i < 32 && message_buffer[i] != '\0'; i++) {
+        for (i = 16; i < 32; i++) {
             lcd_write_data(message_buffer[i]);
         }
 
-        msg_index = 0;  // Reset for next message
-    } else {
-        if (msg_index < MAX_MSG_LEN - 1) {
-            message_buffer[msg_index++] = c;
-        } else {
-            msg_index = 0; // reset if too long
-        }
+        msg_index = 0;
     }
 }
 
