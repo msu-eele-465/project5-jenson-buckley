@@ -115,30 +115,42 @@ int main(void) {
 
 #pragma vector=EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void) {
-    char c = UCB0RXBUF;
-
-    if (msg_index < 32) {
-        message_buffer[msg_index++] = c;
-    }
-
-    if (msg_index == 32) {
-        // Received full message
-        lcd_clear();
-
-        // Top row
-        lcd_set_cursor(0x00);
-        unsigned char i;
-        for (i = 0; i < 16; i++) {
-            lcd_write_data(message_buffer[i]);
+    switch (__even_in_range(UCB0IV, USCI_I2C_UCBIT9IFG)) {
+        case USCI_I2C_UCRXIFG0: {
+            char c = UCB0RXBUF;
+            if (msg_index < MAX_MSG_LEN) {
+                message_buffer[msg_index++] = c;
+            }
+            break;
         }
 
-        // Bottom row
-        lcd_set_cursor(0x40);
-        for (i = 16; i < 32; i++) {
-            lcd_write_data(message_buffer[i]);
+        case USCI_I2C_UCSTPIFG: {
+            // STOP received — display message if 32 bytes
+            if (msg_index == 32) {
+                lcd_clear();
+
+                delay(5);
+
+                // Top row
+                lcd_set_cursor(0x00);
+                unsigned char i;
+                for (i = 0; i < 16; i++) {
+                    lcd_write_data(message_buffer[i]);
+                }
+
+                // Bottom row
+                lcd_set_cursor(0x40);
+                for (i = 16; i < 32; i++) {
+                    lcd_write_data(message_buffer[i]);
+                }
+            }
+
+            msg_index = 0;  // Always reset
+            break;
         }
 
-        msg_index = 0;
+        default:
+            break;
     }
 }
 

@@ -471,9 +471,8 @@ void i2c_send_msg(char *msg) {
         UCB0TXBUF = msg[i];              // Send byte
     }
 
-    while (!(UCB0IFG & UCBCNTIFG));      // Wait for transmission to finish
-    UCB0CTLW0 |= UCTXSTP;                // Send STOP
-    while (UCB0CTLW0 & UCTXSTP);         // Wait for STOP
+    while (!(UCB0IFG & UCBCNTIFG));      // Wait for byte count complete
+    while (UCB0CTLW0 & UCTXSTP);         // Wait for STOP to complete
 }
 
 
