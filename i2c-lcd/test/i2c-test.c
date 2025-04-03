@@ -6,6 +6,8 @@
 #define LCD_E  BIT2     // Enable
 #define LCD_DATA P2OUT  // Data bus on Port 1
 
+char message[] = "LOCKED         ";    // 33 characters long; first 16 are the top row, last is new line, rest are the bottom
+
 // Delay Function
 void delay(unsigned int count) {
     while(count--) __delay_cycles(1000);
@@ -77,10 +79,11 @@ int main(void) {
     lcd_init();               // Initialize LCD
 
     lcd_set_cursor(0x00);     // Set cursor to beginning of first row
-    lcd_display_string("Hello World    ");
-
-    lcd_set_cursor(0x40);     // Set cursor to beginning of second row
-    lcd_display_string("I like ham      ");
+    lcd_display_string(message);
+    memcpy(&message[0], "UNLOCKED       ", 16);
+    delay(5000);
+    lcd_set_cursor(0x00);     // Set cursor to beginning of second row
+    lcd_display_string(message);
 
     //delay(1000);
     //lcd_clear();
