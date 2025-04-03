@@ -47,7 +47,7 @@ char cur_pattern[] = "                ";                 // saves displayed name
 
 //-- STRING CONVERSIONS
 void updateWidowSize(unsigned int);
-
+void updateTemp(float);
 // STATE
     // 0    Locked
     // 1    First correct digit entered
@@ -241,8 +241,8 @@ int main(void) {
                     P6OUT &= ~BIT6;
                     
                 } else if ((key_val >= '0') & (key_val <= '9')) {
-                    temp_adc_buffer_length = temp_adc_buffer_length*pow(10, adc_tens)+(key_val-'0');
-                
+                    temp_adc_buffer_length = temp_adc_buffer_length*10+(key_val-'0');
+                    adc_tens++;
                 } else if (key_val=='*') {      // exit
 
                     if ((temp_adc_buffer_length > 0) & (temp_adc_buffer_length < 101)) {    // update length of rolling average
@@ -511,13 +511,11 @@ __interrupt void ISR_TB0_CCR0(void)
     } else {
         if (corf_toggle == 0) {
             average = adc2c(adc_sensor_avg);
-            sprintf(adc_sensor_avg_string, "%.2f", average); //Adds decimal and prints to string
-            memcpy(&message[18], adc_sensor_avg_string, 5);
+            updateTemp(average);
             i2c_send_msg(message);
         } else {
             average = adc2f(adc_sensor_avg);
-            sprintf(adc_sensor_avg_string, "%.2f", average); //Adds decimal and prints to string
-            memcpy(&message[18], adc_sensor_avg_string, 5);
+            updateTemp(average);
             i2c_send_msg(message);
         }
     }
@@ -551,4 +549,16 @@ void updateWidowSize(unsigned int n) {
     message[28] = hundreds+48;
     message[29] = tens+48;
     message[30] = ones+48;
+}
+
+void updateTemp(float ave) {
+    unsigned int n = (int) (ave*100);
+    unsigned int tens = n / 1000;
+    unsigned int ones = (n - 1000*tens) / 100;
+    unsigned int tenths = (n-1000*tens-100*ones) / 10;
+    unsigned int hudredths = n-1000*tens-100*ones-10*tenths;
+    message[18] = tens+48;
+    message[19] = ones+48;
+    message[21] = tenths+48;
+    message[22] = hudredths+48;
 }
