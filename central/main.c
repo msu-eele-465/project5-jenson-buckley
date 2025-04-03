@@ -89,10 +89,10 @@ int main(void) {
     
     // Send default message "LOCKED          T=##.#°X    N=3  \n"
     __delay_cycles(5000);
-    i2c_send_msg(message);
+    //i2c_send_msg(message);
 
     // Send default pattern - 9 (off)
-    //i2c_send_int(9);
+    i2c_send_int(9);
 
     
 
@@ -106,13 +106,13 @@ int main(void) {
                     state = 1;
                     P1OUT |= BIT0;
                     memcpy(&message[0], "UNLOCKING       ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
 
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
 
                 }
 
@@ -123,7 +123,7 @@ int main(void) {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                 }
                 
             } else if (state == 2) {
@@ -133,7 +133,7 @@ int main(void) {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                 }
 
             } else if (state == 3) {
@@ -141,12 +141,12 @@ int main(void) {
                     state = 4;
                     P6OUT |= BIT6;
                     memcpy(&message[0], "UNLOCKED        ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                 } else {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                 }
 
             } else if (state == 4) {
@@ -154,17 +154,17 @@ int main(void) {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                     P6OUT &= ~BIT6;
 
                 } else if (key_val=='A') {      // enter pattern
                     memcpy(&message[0], "Set Pattern     ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                     state = 5;
 
                 } else if (key_val=='B') {      // enter window
                     memcpy(&message[0], "Set Window Size ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                     adc_tens = 0;
                     temp_adc_buffer_length = 0;
                     state = 6;
@@ -178,52 +178,52 @@ int main(void) {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                     P6OUT &= ~BIT6;
                 } else if (key_val=='A') {      // decrease base period by 0.25 s
-                    //i2c_send_int(10); 
+                    i2c_send_int(10); 
                 } else if (key_val=='B') {      // increase base period by 0.25 s
-                    //i2c_send_int(11); 
+                    i2c_send_int(11); 
                 } else if (key_val=='0') {      // pattern 0
                     memcpy(&cur_pattern[0], "Static          ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(0);
+                    //i2c_send_msg(message);
+                    i2c_send_int(0);
                 } else if (key_val=='1') {      // pattern 1
                 memcpy(&cur_pattern[0], "Toggle          ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(1);
+                    //i2c_send_msg(message);
+                    i2c_send_int(1);
                 } else if (key_val=='2') {      // pattern 2
                 memcpy(&cur_pattern[0], "Toggle          ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(2);
+                    //i2c_send_msg(message);
+                    i2c_send_int(2);
                 } else if (key_val=='3') {      // pattern 3
                     memcpy(&cur_pattern[0], "In and Out      ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message); 
-                    //i2c_send_int(3);
+                    //i2c_send_msg(message); 
+                    i2c_send_int(3);
                 } else if (key_val=='4') {      // pattern 4
                     memcpy(&cur_pattern[0], "Down Counter    ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(4);
+                    //i2c_send_msg(message);
+                    i2c_send_int(4);
                 } else if (key_val=='5') {      // pattern 5
                     memcpy(&cur_pattern[0], "Rotate One Left ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(5);
+                    //i2c_send_msg(message);
+                    i2c_send_int(5);
                 } else if (key_val=='6') {      // pattern 6
                     memcpy(&cur_pattern[0], "Fill to the Left ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(6);
+                    //i2c_send_msg(message);
+                    i2c_send_int(6);
                 } else if (key_val=='7') {      // pattern 7
                     memcpy(&cur_pattern[0], "Static          ", 16);
                     memcpy(&message[0], cur_pattern, 16);
-                    i2c_send_msg(message);
-                    //i2c_send_int(7);
+                    //i2c_send_msg(message);
+                    i2c_send_int(7);
                 } else if (key_val=='*') {      // exit
                     state = 4;
                 }
@@ -233,7 +233,7 @@ int main(void) {
                     state = 0;
                     P1OUT &= ~BIT0;
                     memcpy(&message[0], "LOCKED          ", 16);
-                    i2c_send_msg(message);
+                    //i2c_send_msg(message);
                     P6OUT &= ~BIT6;
                     
                 } else if ((key_val >= '0') & (key_val <= '9')) {
@@ -252,7 +252,7 @@ int main(void) {
                     sprintf(adc_buffer_length_string, "%03d", adc_buffer_length);           // format zero-padded to 3 digits, e.g., "007"
                     memcpy(&message[28], adc_buffer_length_string, 3);                      // update message
                     memcpy(&message[0], cur_pattern, 16);                                   // display current pattern
-                    i2c_send_msg(message);                                                  // send message
+                    //i2c_send_msg(message);                                                  // send message
                     state = 4;
                 }
 
@@ -510,12 +510,12 @@ __interrupt void ISR_TB0_CCR0(void)
             average = adc2c(adc_sensor_avg);
             sprintf(adc_sensor_avg_string, "%2d.%1d", adc_sensor_avg / 10, adc_sensor_avg % 10); //Adds decimal and prints to string
             memcpy(&message[18], adc_sensor_avg_string, 4);
-            //i2c_send_msg(message);
+            ////i2c_send_msg(message);
         } else {
             average = adc2f(adc_sensor_avg);
             sprintf(adc_sensor_avg_string, "%2d.%1d", adc_sensor_avg / 10, adc_sensor_avg % 10); //Adds decimal and prints to string
             memcpy(&message[18], adc_sensor_avg_string, 4);
-            //i2c_send_msg(message);
+            ////i2c_send_msg(message);
         }
     }
 
